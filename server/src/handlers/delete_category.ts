@@ -1,16 +1,37 @@
 
+import { db } from '../db';
+import { categoriesTable, archivesTable } from '../db/schema';
 import { type Category } from '../schema';
+import { eq } from 'drizzle-orm';
 
-export async function deleteCategory(categoryId: number): Promise<Category> {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is deleting a category from the database.
-  // Should validate that category exists
-  // Should handle archives that belong to this category (set category_id to null)
-  return Promise.resolve({
-    id: categoryId,
-    name: 'Deleted Category',
-    description: null,
-    created_at: new Date(),
-    updated_at: new Date()
-  } as Category);
-}
+export const deleteCategory = async (categoryId: number): Promise<Category> => {
+  try {
+    // First, verify the category exists and get its data
+    const existingCategories = await db.select()
+      .from(categoriesTable)
+      .where(eq(categoriesTable.id, categoryId))
+      .execute();
+
+    if (existingCategories.length === 0) {
+      throw new Error(`Category with id ${categoryId} not found`);
+    }
+
+    const category = existingCategories[0];
+
+    // Update all archives that belong to this category to have null category_id
+    await db.update(archivesTable)
+      .set({ category_id: null })
+      .where(eq(archivesTable.category_id, categoryId))
+      .execute();
+
+    // Delete the category
+    await db.delete(categoriesTable)
+      .where(eq(categoriesTable.id, categoryId))
+      .execute();
+
+    return category;
+  } catch (error) {
+    console.error('Category deletion failed:', error);
+    throw error;
+  }
+};

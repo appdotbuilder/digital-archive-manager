@@ -1,9 +1,22 @@
 
+import { db } from '../db';
+import { archivesTable } from '../db/schema';
 import { type Archive } from '../schema';
 
-export async function getArchives(): Promise<Archive[]> {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is fetching all archives from the database.
-  // Should support pagination, sorting, and filtering by category or file type
-  return [];
-}
+export const getArchives = async (): Promise<Archive[]> => {
+  try {
+    const results = await db.select()
+      .from(archivesTable)
+      .execute();
+
+    return results.map(archive => ({
+      ...archive,
+      // No numeric conversions needed - all fields are already correct types
+      // file_size is integer, so no conversion needed
+      category_id: archive.category_id, // nullable integer - no conversion needed
+    }));
+  } catch (error) {
+    console.error('Get archives failed:', error);
+    throw error;
+  }
+};

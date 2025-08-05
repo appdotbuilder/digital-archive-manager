@@ -1,10 +1,26 @@
 
+import { db } from '../db';
+import { usersTable } from '../db/schema';
 import { type User } from '../schema';
 
-export async function getUsers(): Promise<User[]> {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is fetching all users from the database.
-  // Should exclude password_hash from the response for security
-  // Should support pagination and filtering
-  return [];
-}
+export const getUsers = async (): Promise<Omit<User, 'password_hash'>[]> => {
+  try {
+    const results = await db.select({
+      id: usersTable.id,
+      email: usersTable.email,
+      first_name: usersTable.first_name,
+      last_name: usersTable.last_name,
+      role: usersTable.role,
+      is_active: usersTable.is_active,
+      created_at: usersTable.created_at,
+      updated_at: usersTable.updated_at
+    })
+    .from(usersTable)
+    .execute();
+
+    return results;
+  } catch (error) {
+    console.error('Failed to fetch users:', error);
+    throw error;
+  }
+};

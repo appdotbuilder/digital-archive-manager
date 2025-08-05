@@ -1,18 +1,46 @@
 
+import { db } from '../db';
+import { accessLogsTable, usersTable, archivesTable } from '../db/schema';
 import { type CreateAccessLogInput, type AccessLog } from '../schema';
+import { eq } from 'drizzle-orm';
 
-export async function createAccessLog(input: CreateAccessLogInput): Promise<AccessLog> {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is creating a new access log entry in the database.
-  // Should validate that user and archive exist
-  // Should capture IP address and user agent from request context
-  return Promise.resolve({
-    id: 0, // Placeholder ID
-    user_id: input.user_id,
-    archive_id: input.archive_id,
-    action: input.action,
-    ip_address: input.ip_address || null,
-    user_agent: input.user_agent || null,
-    created_at: new Date()
-  } as AccessLog);
-}
+export const createAccessLog = async (input: CreateAccessLogInput): Promise<AccessLog> => {
+  try {
+    // Validate that the user exists
+    const userExists = await db.select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.id, input.user_id))
+      .execute();
+
+    if (userExists.length === 0) {
+      throw new Error(`User with ID ${input.user_id} does not exist`);
+    }
+
+    // Validate that the archive exists
+    const archiveExists = await db.select({ id: archivesTable.id })
+      .from(archivesTable)
+      .where(eq(archivesTable.id, input.archive_id))
+      .execute();
+
+    if (archiveExists.length === 0) {
+      throw new Error(`Archive with ID ${input.archive_id} does not exist`);
+    }
+
+    // Insert access log record
+    const result = await db.insert(accessLogsTable)
+      .values({
+        user_id: input.user_id,
+        archive_id: input.archive_id,
+        action: input.action,
+        ip_address: input.ip_address || null,
+        user_agent: input.user_agent || null
+      })
+      .returning()
+      .execute();
+
+    return result[0];
+  } catch (error) {
+    console.error('Access log creation failed:', error);
+    throw error;
+  }
+};
